@@ -67,6 +67,8 @@ namespace ego_planner
 
     ros::Time t_start = ros::Time::now();
     ros::Duration t_init, t_opt, t_refine;
+    struct timeval stop, start;
+    gettimeofday(&start, NULL);
 
     /*** STEP 1: INIT ***/
     double ts = (start_pt - local_target_pt).norm() > 0.1 ? pp_.ctrl_pt_dist / pp_.max_vel_ * 1.5 : pp_.ctrl_pt_dist / pp_.max_vel_ * 5; // pp_.ctrl_pt_dist / pp_.max_vel_ is too tense, and will surely exceed the acc/vel limits
@@ -330,9 +332,12 @@ namespace ego_planner
 
     static double sum_time = 0;
     static int count_success = 0;
+    gettimeofday(&stop, NULL);
+    pp_.cpt_ = (stop.tv_sec - start.tv_sec) * 1e3 + (stop.tv_usec - start.tv_usec) * 1e-3;
+    cout << pp_.cpt_ << endl;
     sum_time += (t_init + t_opt + t_refine).toSec();
     count_success++;
-    cout << "total time:\033[42m" << (t_init + t_opt + t_refine).toSec() << "\033[0m,optimize:" << (t_init + t_opt).toSec() << ",refine:" << t_refine.toSec() << ",avg_time=" << sum_time / count_success << endl;
+    cout << "total time:\033[42m" << pp_.cpt_ << "\033[0m,optimize:" << (t_init + t_opt).toSec() << ",refine:" << t_refine.toSec() << ",avg_time=" << sum_time / count_success << endl;
 
     // success. YoY
     continous_failures_count_ = 0;

@@ -199,9 +199,7 @@ namespace ego_planner
     int drone_id; // single drone: drone_id <= -1, swarm: drone_id >= 0
 
     /* processing time */
-    double time_search_ = 0.0;
-    double time_optimize_ = 0.0;
-    double time_adjust_ = 0.0;
+    double cpt_ = 0.0;
   };
 
   struct LocalTrajData

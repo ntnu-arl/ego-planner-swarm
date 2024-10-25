@@ -1,14 +1,19 @@
 #include "bspline_opt/uniform_bspline.h"
 #include "nav_msgs/Odometry.h"
 #include "traj_utils/Bspline.h"
-#include "quadrotor_msgs/PositionCommand.h"
+#include "rpg_quadrotor_msgs/TrajectoryPoint.h"
+#include "geometry_msgs/PoseStamped.h"
+#include "geometry_msgs/TwistStamped.h"
 #include "std_msgs/Empty.h"
 #include "visualization_msgs/Marker.h"
 #include <ros/ros.h>
+#include <cmath>
 
 ros::Publisher pos_cmd_pub;
 
-quadrotor_msgs::PositionCommand cmd;
+rpg_quadrotor_msgs::TrajectoryPoint cmd;
+// geometry_msgs::PoseStamped cmd;
+// geometry_msgs::TwistStamped cmd;
 double pos_gain[3] = {0, 0, 0};
 double vel_gain[3] = {0, 0, 0};
 
@@ -71,7 +76,7 @@ void bsplineCallback(traj_utils::BsplineConstPtr msg)
 std::pair<double, double> calculate_yaw(double t_cur, Eigen::Vector3d &pos, ros::Time &time_now, ros::Time &time_last)
 {
   constexpr double PI = 3.1415926;
-  constexpr double YAW_DOT_MAX_PER_SEC = PI;
+  constexpr double YAW_DOT_MAX_PER_SEC = PI/4;
   // constexpr double YAW_DOT_DOT_MAX_PER_SEC = PI;
   std::pair<double, double> yaw_yawdot(0, 0);
   double yaw = 0;
@@ -206,25 +211,52 @@ void cmdCallback(const ros::TimerEvent &e)
 
   cmd.header.stamp = time_now;
   cmd.header.frame_id = "world";
-  cmd.trajectory_flag = quadrotor_msgs::PositionCommand::TRAJECTORY_STATUS_READY;
-  cmd.trajectory_id = traj_id_;
 
-  cmd.position.x = pos(0);
-  cmd.position.y = pos(1);
-  cmd.position.z = pos(2);
+  cmd.time_from_start = ros::Duration(0.01);
+  // cmd.trajectory_flag = quadrotor_msgs::PositionCommand::TRAJECTORY_STATUS_READY;
+  // cmd.trajectory_id = traj_id_;
 
-  cmd.velocity.x = vel(0);
-  cmd.velocity.y = vel(1);
-  cmd.velocity.z = vel(2);
+  cmd.pose.position.x = pos(0);
+  cmd.pose.position.y = pos(1);
+  cmd.pose.position.z = pos(2);
 
-  cmd.acceleration.x = acc(0);
-  cmd.acceleration.y = acc(1);
-  cmd.acceleration.z = acc(2);
+  // cmd.pose.orientation.w = std::cos(yaw_yawdot.first * 0.5);
+  // cmd.pose.orientation.x = 0;
+  // cmd.pose.orientation.y = 0;
+  // cmd.pose.orientation.z = std::sin(yaw_yawdot.first * 0.5);
 
-  cmd.yaw = yaw_yawdot.first;
-  cmd.yaw_dot = yaw_yawdot.second;
+  // cmd.twist.linear.x = vel(0);
+  // cmd.twist.linear.y = vel(1);
+  // cmd.twist.linear.z = vel(2);
 
-  last_yaw_ = cmd.yaw;
+  // cmd.twist.angular.z = yaw_yawdot.second;
+
+  cmd.velocity.linear.x = vel(0);
+  cmd.velocity.linear.y = vel(1);
+  cmd.velocity.linear.z = vel(2);
+
+  cmd.acceleration.linear.x = acc(0);
+  cmd.acceleration.linear.y = acc(1);
+  cmd.acceleration.linear.z = acc(2);
+
+  // double yaw_e = (last_yaw_ - yaw_yawdot.first) * (last_yaw_ - yaw_yawdot.first);
+  // if (yaw_e < 0.25)
+  // {
+  //   cmd.heading = yaw_yawdot.first;
+  // }
+  // else
+  // {
+  //   if ((last_yaw_ - yaw_yawdot.first) > 0)
+  //     cmd.heading = last_yaw_ + 0.5;
+  //   else
+  //     cmd.heading = last_yaw_ - 0.5;
+  // }
+  
+  cmd.heading = yaw_yawdot.first;
+  // cmd.heading_rate = yaw_yawdot.second;
+  cmd.heading_rate = 0;
+
+  last_yaw_ = cmd.heading;
 
   pos_cmd_pub.publish(cmd);
 }
@@ -237,18 +269,20 @@ int main(int argc, char **argv)
 
   ros::Subscriber bspline_sub = nh.subscribe("planning/bspline", 10, bsplineCallback);
 
-  pos_cmd_pub = nh.advertise<quadrotor_msgs::PositionCommand>("/position_cmd", 50);
+  pos_cmd_pub = nh.advertise<rpg_quadrotor_msgs::TrajectoryPoint>("/position_cmd", 50);
+  // pos_cmd_pub = nh.advertise<geometry_msgs::TwistStamped>("/position_cmd", 50);
+  // pos_cmd_pub = nh.advertise<geometry_msgs::PoseStamped>("/position_cmd", 50);
 
   ros::Timer cmd_timer = nh.createTimer(ros::Duration(0.01), cmdCallback);
 
-  /* control parameter */
-  cmd.kx[0] = pos_gain[0];
-  cmd.kx[1] = pos_gain[1];
-  cmd.kx[2] = pos_gain[2];
+  // /* control parameter */
+  // cmd.kx[0] = pos_gain[0];
+  // cmd.kx[1] = pos_gain[1];
+  // cmd.kx[2] = pos_gain[2];
 
-  cmd.kv[0] = vel_gain[0];
-  cmd.kv[1] = vel_gain[1];
-  cmd.kv[2] = vel_gain[2];
+  // cmd.kv[0] = vel_gain[0];
+  // cmd.kv[1] = vel_gain[1];
+  // cmd.kv[2] = vel_gain[2];
 
   nh.param("traj_server/time_forward", time_forward_, -1.0);
   last_yaw_ = 0.0;

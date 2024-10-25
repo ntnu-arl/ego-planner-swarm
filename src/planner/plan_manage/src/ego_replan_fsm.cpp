@@ -59,6 +59,8 @@ namespace ego_planner
     bspline_pub_ = nh.advertise<traj_utils::Bspline>("planning/bspline", 10);
     data_disp_pub_ = nh.advertise<traj_utils::DataDisp>("planning/data_display", 100);
 
+    time_pub_ =  nh.advertise<std_msgs::Float32>("compute_time", 10);
+
     if (target_type_ == TARGET_TYPE::MANUAL_TARGET)
     {
       waypoint_sub_ = nh.subscribe("/move_base_simple/goal", 1, &EGOReplanFSM::waypointCallback, this);
@@ -806,6 +808,10 @@ namespace ego_planner
 
   void EGOReplanFSM::publishSwarmTrajs(bool startup_pub)
   {
+    std_msgs::Float32 cpt_msg;
+    cpt_msg.data = planner_manager_->pp_.cpt_;
+    time_pub_.publish(cpt_msg);
+
     auto info = &planner_manager_->local_data_;
 
     traj_utils::Bspline bspline;

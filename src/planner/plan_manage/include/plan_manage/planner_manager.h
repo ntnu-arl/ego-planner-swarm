@@ -2,6 +2,7 @@
 #define _PLANNER_MANAGER_H_
 
 #include <stdlib.h>
+#include <sys/time.h>
 
 #include <bspline_opt/bspline_optimizer.h>
 #include <bspline_opt/uniform_bspline.h>
